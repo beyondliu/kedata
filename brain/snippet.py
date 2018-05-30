@@ -114,8 +114,8 @@ class Snippet:
         self.children.extend(children)
         self.save()
 
-    def remove_children(self, children):
-        self.children -= children
+    def remove_children(self, children):        
+        self.children = set(self.children) - set(children)
         self.save()
     
     def save_children_order(self, children):

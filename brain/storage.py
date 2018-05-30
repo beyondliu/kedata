@@ -294,7 +294,7 @@ class GitlabEsStorage(Storage):
         # for tag in tags:
         #     tags_txt_list.append(yaml.dump(tag, default_flow_style=False, Dumper=Dumper))            
         # tags_txt = '\n\n'.join(tags_txt_list)        
-        tags_txt = '\n\n'.join(list(map(lambda tag:yaml.dump(tag, default_flow_style=False, Dumper=Dumper), tags)))
+        tags_txt = '\n\n'.join(set(map(lambda tag:yaml.dump(tag, default_flow_style=False, Dumper=Dumper), tags)))
         #put update of the tag itself into this commit so it is wrapped up like a transaction. 
         actions = [{"action": "update",
                     "file_path": 'tags',
@@ -351,9 +351,9 @@ class GitlabEsStorage(Storage):
                 filter(('').__ne__, items))
         new_tag = kwargs
         new_tag['name'] = name                
-        tags = list(map(lambda tag: tag if tag['name'] != name else new_tag, map(lambda item: yaml.load(item, Loader=Loader), items)))
+        tags = set(map(lambda tag: tag if tag['name'] != name else new_tag, map(lambda item: yaml.load(item, Loader=Loader), items)))
         log.debug('tags:%s', tags)
-        tags_txt = '\n\n'.join(list(map(lambda tag:yaml.dump(tag, default_flow_style=False, Dumper=Dumper), tags)))
+        tags_txt = '\n\n'.join(set(map(lambda tag:yaml.dump(tag, default_flow_style=False, Dumper=Dumper), tags)))
         # put update of the tag itself into this commit so it is wrapped up like a transaction. 
         actions = [{"action": "update",
                     "file_path": 'tags',
@@ -384,7 +384,7 @@ class GitlabEsStorage(Storage):
                     f = self._get_f(snippet_id)
                     sn = f.decode().decode("utf-8")
                     snippet = yaml.load(sn)
-                    snippet['tags'] =  list(map(lambda a: a if a!=name else new_name, snippet['tags']))                    
+                    snippet['tags'] =  set(map(lambda a: a if a!=name else new_name, snippet['tags']))                    
                     actions.append({"action": "update",
                                 "file_path": GitlabEsStorage.get_snippet_gitlab_path()+snippet_id,
                                 "content": yaml.dump(snippet, Dumper=Dumper)})
@@ -458,7 +458,7 @@ class GitlabEsStorage(Storage):
                 f = self._get_f(snippet_id)                
                 sn = f.decode().decode("utf-8")
                 snippet = yaml.load(sn)
-                snippet['tags'] =  list(map(lambda a: a if a!=name else new_name, snippet['tags']))                    
+                snippet['tags'] =  set(map(lambda a: a if a!=name else new_name, snippet['tags']))                    
                 actions.append({"action": "update",
                             "file_path": GitlabEsStorage.get_snippet_gitlab_path()+snippet_id,
                             "content": yaml.dump(snippet, Dumper=Dumper)})

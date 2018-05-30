@@ -2,6 +2,7 @@
 
 from pytz import timezone
 from datetime import datetime
+import itertools
 
 from brain.snippet import *
 from brain.tag import *
@@ -143,21 +144,31 @@ class Mind:
                     self.storage.update_tag_name(name, new_name)   
             return new_name
         else:
-            Tag.DoesNotExist               
+            raise Tag.DoesNotExist               
     
     #TODO:move this into Snippet?
     #TODO: optimize with searching in es directly
     def get_related_frames(self, id):
         fr = self.get_snippet(id)        
-        related_frames = set()
-        for child_id in fr.children:
-            s = self.get_snippet(child_id)            
-            related_frames = related_frames | set(s.get_in_frames())
-        return related_frames
+        # related_frames = set()
+        # for child_id in fr.children:
+        #     s = self.get_snippet(child_id)            
+        #     related_frames = related_frames | set(s.get_in_frames())
+        # return related_frames
+        return set(itertools.chain.from_iterable([self.get_snippet(child_id).get_in_frames() for child_id in fr.children]))
+        
                     
 
     def merge_tag(self, tag_name1, tag_name2, new_tag_name):
-        pass
+        oldnames = [tag_name1, tag_name2]
+        if new_tag_name in oldnames:
+            oldnames.remove(new_tag_name)
+            oldname = oldnames[0]
+            self.update_tag_name(old_name, new_name)
+        else:
+            self.update_tag_name(tag_name1, new_name)
+            self.update_tag_name(tag_name2, new_name)
+                
 
 
     def remove_testing_tags(self):        
