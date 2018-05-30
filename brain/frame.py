@@ -10,22 +10,20 @@ class Frame(Snippet):
     fields = ('desc', 'vote', 'private', 'title', 'tags', 'attachment', 'children','init_time', 'update_time')
        
     
-    def add_children(self):
-        pass
+    # def add_children(self, children):
+    #     self.get_storage().add_children(children)
 
-    def remove_children(self):
-        pass    
+    # def remove_children(self, children):
+    #     self.get_storage.remove_children(children)    
 
-    def get_related_frames(self):
-        pass
+    
+
+    # def save_children_order(self):
+    #     pass
 
 
-    def get_parents(self):
-        pass    
+    def __repr__(self):
+        return "<Frame: %s>" % Frame.clean_fields(self.__dict__)    
 
-    def save_children_order(self):
-        pass
-
-    def destroy(self):
-        pass
+  
             

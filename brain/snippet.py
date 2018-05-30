@@ -30,6 +30,7 @@ class Snippet:
     primary_key = 'id'
     fields = ('desc', 'vote', 'private', 'title', 'url', 'tags', 'context', 'attachment', 'children', 'init_time', 'update_time')
     
+    #TODO:move children into frame?
     def __init__(self, username, id, desc, vote=0, tags=None, private=False, title="", attachment=None, url=None, children=None, context=None, init_time=None, update_time=None):         
         """ 
         You are supposed to create and get a snippet only from Mind class instead of instantiate a Snippet instance directly.
@@ -67,12 +68,7 @@ class Snippet:
             return self.get_storage().get_in_frames(self.id) 
 
     @classmethod
-    def clean_fields(cls, sn_dict):
-        # d = {}
-        # for key, value in sn_dict.items():
-        #     if key in Snippet.fields:
-        #         d[key] = value
-        # return d 
+    def clean_fields(cls, sn_dict):      
         return {key:value for key, value in sn_dict.items() if key in cls.fields}        
 
     def __repr__(self):
@@ -112,7 +108,21 @@ class Snippet:
 
     #or move to frame?
     def get_children(self):
-        pass                
+        pass    
+
+    def add_children(self, children):
+        self.children.extend(children)
+        self.save()
+
+    def remove_children(self, children):
+        self.children -= children
+        self.save()
+    
+    def save_children_order(self, children):
+        if set(self.children) != set(children):
+            raise ValueError() 
+        self.children = children
+        self.save()           
 
     class DoesNotExist(Exception):
         pass           

@@ -53,8 +53,8 @@ class Tag(object):
             #TODO: new type of Exception
             raise Tag.DoesNotExist('If you want to update tag name, please use Mind class to do so!')
                
-   
-
+    def __repr__(self):
+        return "<Tag: %s>" % Tag.clean_fields(self.__dict__)   
 
     #TODO:refactor
     def get_storage(self):

@@ -71,6 +71,10 @@ class Mind:
         s.storage = self.storage
         return s
     
+    #TODO:remove?
+    def get_frame(self, id):
+        return self.get_snippet(id)
+
     
     #TODO: use GitlabEsStorage as well
     def get_snippets(self, q='', tag_name=None, cache_id=None, order_by="init_date"):
@@ -140,7 +144,16 @@ class Mind:
             return new_name
         else:
             Tag.DoesNotExist               
-            
+    
+    #TODO:move this into Snippet?
+    #TODO: optimize with searching in es directly
+    def get_related_frames(self, id):
+        fr = self.get_snippet(id)        
+        related_frames = set()
+        for child_id in fr.children:
+            s = self.get_snippet(child_id)            
+            related_frames = related_frames | set(s.get_in_frames())
+        return related_frames
                     
 
     def merge_tag(self, tag_name1, tag_name2, new_tag_name):
@@ -158,7 +171,7 @@ class Mind:
         print('tags after removing testing tags:', [t.name for t in ts_new])
 
 
-
+    
 
 
 
