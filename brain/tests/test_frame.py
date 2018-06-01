@@ -29,7 +29,7 @@ class TestFrame(unittest.TestCase):
         # self.assertListEqual(fr.tags, ['language'])
         self.assertEqual(fr.title, 'a testing frame')
         self.assertIsNone(fr.attachment)
-        self.assertSetEqual(fr.children, set([self.sid]))
+        self.assertListEqual(fr.children, [self.sid])
 
 
     def test_update_frame(self):
@@ -48,7 +48,7 @@ class TestFrame(unittest.TestCase):
         # self.assertListEqual(fr.tags, ['language'])
         self.assertEqual(fr.title, 'testing updating the frame')
         self.assertIsNone(fr.attachment)
-        self.assertSetEqual(fr.children, set([self.sid]))
+        self.assertListEqual(fr.children, [self.sid])
 
 
     def test_add_children(self):
@@ -56,7 +56,7 @@ class TestFrame(unittest.TestCase):
         fr.add_children([1,2,3]) #the availbility of children are not verified.         
         time.sleep(6)
         updated_fr = self.mind.get_frame(self.fid)
-        self.assertSetEqual(fr.children, set([self.sid, 1, 2, 3]))
+        self.assertListEqual(fr.children, [self.sid, 1, 2, 3])
 
 
     def test_remove_children(self):
@@ -64,7 +64,7 @@ class TestFrame(unittest.TestCase):
         fr.remove_children([self.sid]) #can remove one child or a list of children        
         time.sleep(6)
         updated_fr = self.mind.get_frame(self.fid)
-        self.assertSetEqual(fr.children, set())
+        self.assertListEqual(fr.children, [])
 
 
     def test_save_children_order(self):
@@ -79,8 +79,12 @@ class TestFrame(unittest.TestCase):
 
 
     def test_get_related_frames(self):
-        fr2 = self.mind.create_frame(desc='a frame', private=False, title="a testing frame", attachment=None, children=[self.fid])
+        fr2 = self.mind.create_frame(desc='a frame', private=False, title="a testing frame", attachment=None, children=[self.sid])
+        time.sleep(6)
         fr1 = self.mind.get_frame(self.fid)
+        print('sid:%s, fr1.id: %s, fr2.id: %s' % (self.sid, fr1.id, fr2.id))
+        print('fr1.children:', fr1.children)
+        print('fr2.children:', fr2.children)
         self.assertIn(str(fr2.id), self.mind.get_related_frames(fr1.id))
 
 

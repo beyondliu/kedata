@@ -56,11 +56,11 @@ class TestSnippet(unittest.TestCase):
         self.assertEqual(updated_s.url, 'https://git-scm.com/book/en/v8')
         
 
-    # def test_get_snippets(self):
-    #     #TODO: use search or provide a way to get all snippets (at least just ids)
-    #     sns = self.mind.get_snippets()
-    #     sids = [s.id for s in sns]
-    #     self.assertIn(str(self.sid), sids)
+    def test_get_snippets(self):
+        #TODO: use search or provide a way to get all snippets (at least just ids)
+        sns = self.mind.get_snippets()
+        sids = [s.id for s in sns]
+        self.assertIn(str(self.sid), sids)
 
 
 

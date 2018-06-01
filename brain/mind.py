@@ -78,11 +78,11 @@ class Mind:
 
     
     #TODO: use GitlabEsStorage as well
-    def get_snippets(self, q='', tag_name=None, cache_id=None, order_by="init_date"):
+    def get_snippets(self, q='', tag_name=None, cache_id=None, order_by="init_date", page_size=50, page_no=1, all=None):
         """
         Can get frames as well
         """
-        sns = self.storage.get_snippets(q=q, tag_name=tag_name, cache_id=cache_id, order_by=order_by)                            
+        sns = self.storage.get_snippets(q=q, tag_name=tag_name, cache_id=cache_id, order_by=order_by, page_size=page_size, page_no=page_no, all=all)                            
         log.debug('Snippets found:%s', sns)                         
         snippets = [Snippet(self.username, **sn) for sn in sns]
         return snippets    
@@ -149,14 +149,11 @@ class Mind:
     #TODO:move this into Snippet?
     #TODO: optimize with searching in es directly
     def get_related_frames(self, id):
-        fr = self.get_snippet(id)        
-        # related_frames = set()
-        # for child_id in fr.children:
-        #     s = self.get_snippet(child_id)            
-        #     related_frames = related_frames | set(s.get_in_frames())
-        # return related_frames
-        return set(itertools.chain.from_iterable([self.get_snippet(child_id).get_in_frames() for child_id in fr.children]))
-        
+        fr = self.get_snippet(id)              
+        l = list(set(itertools.chain.from_iterable([self.get_snippet(child_id).in_frames for child_id in fr.children])))
+        l.remove(str(id))
+        log.debug('Found related frames:%s', l)
+        return l
                     
 
     def merge_tag(self, tag_name1, tag_name2, new_tag_name):

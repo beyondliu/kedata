@@ -11,12 +11,14 @@ from yaml import CLoader as Loader, CDumper as Dumper
 from pytz import timezone
 from elasticsearch import Elasticsearch
 from elasticsearch.exceptions import NotFoundError as NotFoundInEsError
-from elasticsearch_dsl import Search
+from elasticsearch_dsl import Search, connections
 from unidiff import PatchSet
 
 from brain.config import *
 
 log = getlogger(__name__)
+
+connections.create_connection(hosts=[ES_LOC], timeout=20)
 
 
 def get_current_year():
@@ -190,15 +192,10 @@ class GitlabEsStorage(Storage):
  
 
     def get_in_frames(self, id):             
-        query =  {
-                    "query": {
-                        "match": {
-                          "children": str(id)
-                        }
-                      }
-                   }
-        res_dict = GitlabEsStorage.es.search(index=self.get_es_index_name(), doc_type=GitlabEsStorage.es_doc_type, body=query)              
-        return [] if  res_dict['hits']['total'] == 0 else  [hit['_id'] for hit in res_dict['hits']['hits']]
+        s = Search(index=self.get_es_index_name(), doc_type=GitlabEsStorage.es_doc_type)
+        s = s.query("match", children=str(id))        
+        r = s.execute()
+        return self._es_response_to_ids(r)
 
    
     def _update(self, sn_dict, id):
@@ -206,71 +203,45 @@ class GitlabEsStorage(Storage):
         return sn_dict
 
 
-    def get_snippets(self, q='', tag_name=None, cache_id=None, order_by="init_date"):
-        search = Search(using=GitlabEsStorage.es, index=self.get_es_index_name())
+    def get_snippets(self, q='', tag_name=None, cache_id=None, order_by="init_date", page_size=50, page_no=1, all=None):
+        s = Search(index=self.get_es_index_name(), doc_type=GitlabEsStorage.es_doc_type)
         if q:
-            search = search.query("match", desc=q)
+            s = s.query("match", desc=q)
         if tag_name:
-            search = search.query("match", tags=tag_name)    
-        r = search.execute()
-        return [self._update(hit['_source'], hit['_id']) for hit in r.hits.hits]        
+            s = s.query("match", tags=tag_name)    
+        # if all:
+        #     r = s.scan()
+        s = s[page_size*(page_no-1):page_size*page_no]        
+        r = s.execute()        
+        return self._es_response_to_dict(r, insertId=True)
 
-        # if not (q or tag_name or cache_id):    
-        #     #TODO:support pagination.             
-        #     res_dict = GitlabEsStorage.es.search(index=self.get_es_index_name(), doc_type=GitlabEsStorage.es_doc_type)                                 
-        #     return [] if res_dict['hits']['total'] == 0 else [self._update(hit['_source'], hit['_id']) for hit in res_dict['hits']['hits']]  
-            #below is the same as be above, but maybe more readable
-            # if res_dict['hits']['total'] == 0:                                           
-            #     return []
-            # else:
-            #     hits = res_dict['hits']['hits']
-            #     snippets = []
-            #     for hit in hits:
-            #         hit['_source']['id'] = hit['_id']
-            #         snippets.append(hit['_source'])
-            #     return snippets
+    def _es_response_to_dict(self, response, insertId=False):
+        if insertId:
+            return [self._update(hit['_source'], hit['_id']) for hit in response.hits.hits]        
+        else:
+            return [hit['_source'] for hit in response.hits.hits]   
 
+    def _es_response_to_ids(self, r):
+        return [hit['_id'] for hit in r.hits.hits]                  
+
+        
     def get_frames(self, q='', tag_name=None, cache_id=None, order_by="init_date"):
-        search = Search(using=GitlabEsStorage.es, index=self.get_es_index_name())
+        search = Search(index=self.get_es_index_name())
         search = search.filter("exists", field="children")
         if q:
             search = search.query("match", desc=q)
         if tag_name:
             search = search.query("match", tags=tag_name)    
         r = search.execute()
-        return [self._update(hit['_source'], hit['_id']) for hit in r.hits.hits]        
-        # if not (q or tag_name or cache_id):    
-        #     query = {
-        #                "query" : {
-        #                   "constant_score" : {
-        #                      "filter" : {
-        #                         "exists" : {
-        #                            "field" : "children"
-        #                         }
-        #                      }
-        #                   }
-        #                }
-        #             }
-        #     res_dict = GitlabEsStorage.es.search(index=self.get_es_index_name(), doc_type=GitlabEsStorage.es_doc_type, body=query)  
-        #     log.debug('results of searching for frames: %s', res_dict)            
-        #     return [] if res_dict['hits']['total'] == 0 else [self._update(hit['_source'], hit['_id']) for hit in res_dict['hits']['hits']] 
-
-
-
+        return self._es_response_to_dict(r, insertId=True)
+    
+    
     #TODO:search of tags
     def get_tags(self):
-        res_dict = GitlabEsStorage.es.search(index=self.get_es_index_name(), doc_type='tag')                
-        # if res_dict['hits']['total'] == 0:                                           
-        #     return []
-        # else:
-        #     # hits = res_dict['hits']['hits']
-        #     # tags = []
-        #     # for hit in hits:                
-        #     #     tags.append(hit['_source'])
-        #     tags = [hit['_source'] hit for hit in res_dict['hits']['hits']]     
-        #     return tags
-        return [] if res_dict['hits']['total'] == 0 else [hit['_source'] for hit in res_dict['hits']['hits']]    
-
+        s = Search(index=self.get_es_index_name(), doc_type='tag')
+        r = s.execute()        
+        return self._es_response_to_dict(r)
+        
     def delete_snippet(self, id):  
         #TODO:removing caching of f
         self._get_f(id).delete(branch='master', commit_message='Delete the snippet')
@@ -294,23 +265,17 @@ class GitlabEsStorage(Storage):
         # for tag in tags:
         #     tags_txt_list.append(yaml.dump(tag, default_flow_style=False, Dumper=Dumper))            
         # tags_txt = '\n\n'.join(tags_txt_list)        
-        tags_txt = '\n\n'.join(set(map(lambda tag:yaml.dump(tag, default_flow_style=False, Dumper=Dumper), tags)))
+        tags_txt = '\n\n'.join(list(map(lambda tag:yaml.dump(tag, default_flow_style=False, Dumper=Dumper), tags)))
         #put update of the tag itself into this commit so it is wrapped up like a transaction. 
         actions = [{"action": "update",
                     "file_path": 'tags',
                     "content": tags_txt}
-                  ]
-        #remove this tag from all snippets that have it
-        query= {
-                 "query": {
-                     "match" : {
-                         "tags": name
-                     }
-                 }
-               } 
-        res_dict = GitlabEsStorage.es.search(index=self.get_es_index_name(), doc_type=GitlabEsStorage.es_doc_type, body=query) 
-        if res_dict['hits']['total'] != 0:                                                   
-            hits = res_dict['hits']['hits']               
+                  ]        
+        search = Search(index=self.get_es_index_name(), doc_type=GitlabEsStorage.es_doc_type)
+        search = search.query("match", tags=name)    
+        r = search.execute()        
+        if r:                                                   
+            hits = r.hits.hits             
             snippet_ids = [hit['_id'] for hit in hits]
             log.debug('The following snippets have the tag %s: %s ', name, snippet_ids)
             for snippet_id in snippet_ids:
@@ -326,8 +291,7 @@ class GitlabEsStorage(Storage):
                    "commit_message": "Delete the tag {} and also update snippets that have this tag".format(name) if len(actions) > 1 else "Delete the tag {}. No existing snippets have this tag.".format(name),
                    "actions": actions}  
         self._get_gitlab_proj().commits.create(data)  
-        log.info('Tag %s  succesfully deleted!', name)              
-
+        log.info('Tag %s  succesfully deleted!', name)
 
 
 
@@ -351,9 +315,9 @@ class GitlabEsStorage(Storage):
                 filter(('').__ne__, items))
         new_tag = kwargs
         new_tag['name'] = name                
-        tags = set(map(lambda tag: tag if tag['name'] != name else new_tag, map(lambda item: yaml.load(item, Loader=Loader), items)))
+        tags = list(map(lambda tag: tag if tag['name'] != name else new_tag, map(lambda item: yaml.load(item, Loader=Loader), items)))
         log.debug('tags:%s', tags)
-        tags_txt = '\n\n'.join(set(map(lambda tag:yaml.dump(tag, default_flow_style=False, Dumper=Dumper), tags)))
+        tags_txt = '\n\n'.join(list(map(lambda tag:yaml.dump(tag, default_flow_style=False, Dumper=Dumper), tags)))
         # put update of the tag itself into this commit so it is wrapped up like a transaction. 
         actions = [{"action": "update",
                     "file_path": 'tags',
@@ -362,29 +326,18 @@ class GitlabEsStorage(Storage):
         #TODO:remove below          
         new_name = kwargs.get('name')
         if new_name and new_name != name:          
-            #remove this tag from all snippets that have it
-            query= {
-                     "query": {
-                         "match" : {
-                             "tags": name
-                         }
-                     }
-                   } 
-            res_dict = GitlabEsStorage.es.search(index=self.get_es_index_name(), doc_type=GitlabEsStorage.es_doc_type, body=query) 
-            if res_dict['hits']['total'] == 0:      
-                #no snippets have this tag, so just do nothing                                     
-                pass
-            else:
-                hits = res_dict['hits']['hits']
-                # snippet_ids = []
-                # for hit in hits:
-                #     snippet_ids.append(hit['_id'])     
+            #remove this tag from all snippets that have it            
+            search = Search(index=self.get_es_index_name(), doc_type=GitlabEsStorage.es_doc_type)
+            search = search.query("match", tags=name)    
+            r = search.execute()        
+            if r:                                                   
+                hits = r.hits.hits             
                 snippet_ids = [hit['_id'] for hit in hits]
                 for snippet_id in snippet_ids:
                     f = self._get_f(snippet_id)
                     sn = f.decode().decode("utf-8")
                     snippet = yaml.load(sn)
-                    snippet['tags'] =  set(map(lambda a: a if a!=name else new_name, snippet['tags']))                    
+                    snippet['tags'] =  list(map(lambda a: a if a!=name else new_name, snippet['tags']))                    
                     actions.append({"action": "update",
                                 "file_path": GitlabEsStorage.get_snippet_gitlab_path()+snippet_id,
                                 "content": yaml.dump(snippet, Dumper=Dumper)})
@@ -433,8 +386,7 @@ class GitlabEsStorage(Storage):
         actions = [{"action": "update",
                     "file_path": 'tags',
                     "content": tags_txt}
-                  ]
-        
+                  ]        
     
         #update this tag from all snippets that have it
         query= {
@@ -458,7 +410,7 @@ class GitlabEsStorage(Storage):
                 f = self._get_f(snippet_id)                
                 sn = f.decode().decode("utf-8")
                 snippet = yaml.load(sn)
-                snippet['tags'] =  set(map(lambda a: a if a!=name else new_name, snippet['tags']))                    
+                snippet['tags'] =  list(map(lambda a: a if a!=name else new_name, snippet['tags']))                    
                 actions.append({"action": "update",
                             "file_path": GitlabEsStorage.get_snippet_gitlab_path()+snippet_id,
                             "content": yaml.dump(snippet, Dumper=Dumper)})
@@ -472,40 +424,21 @@ class GitlabEsStorage(Storage):
         #TODO: parse new name from gitlab api return 
         return new_name
 
-
-       
-
-
     
     def _get_f(self, id):
-        #TODO:remove caching
-        # if hasattr(self, '_f_dict') and self._f_dict.get(id):
-        #     return self._f_dict.get(id)    
-        # else:
-            f = self._get_gitlab_proj().files.get(file_path=GitlabEsStorage.get_snippet_gitlab_path()+str(id), ref='master')    
-            # self._f_dict[id] = f
-            return f
+        f = self._get_gitlab_proj().files.get(file_path=GitlabEsStorage.get_snippet_gitlab_path()+str(id), ref='master')           
+        return f
 
     def _get_tags_f(self):
-        #No caching of this anymore. There doesn't seem to be a method to refresh the file
-        # if hasattr(self, '_tags_f'):
-        #     return self._tags_f
-        # else:
-            tags_f = self._get_gitlab_proj().files.get(file_path='tags', ref='master')
-            # self._tags_f = tags_f
-            return tags_f
+        tags_f = self._get_gitlab_proj().files.get(file_path='tags', ref='master')            
+        return tags_f
 
     @classmethod
     def get_project_username(cls, proj_id):
-        query = {
-                  "query": {
-                    "match": {
-                      "proj_id": str(proj_id)
-                    }
-                  }
-                }
-        res_dict = GitlabEsStorage.es.search(index='ke', doc_type='user_data_loc', body=query)
-        return res_dict['hits']['hits'][0]['_id'] 
+        s = Search(index='ke', doc_type='user_data_loc')
+        s = s.query("match", proj_id=str(proj_id))
+        r = s.execute()        
+        return r.hists.hits[0]['_id']
 
         
     def gitlab_hook(self, push_event):

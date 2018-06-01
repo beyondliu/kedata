@@ -17,7 +17,8 @@ log = getlogger(__name__)
 
 
 #TODO: es field mapping
-#TODO:logger
+
+#TODO: post snippet with new tags should work (have the new tags created as well)
   
 
 class Snippet:
@@ -115,7 +116,7 @@ class Snippet:
         self.save()
 
     def remove_children(self, children):        
-        self.children = set(self.children) - set(children)
+        self.children = list(set(self.children) - set(children))
         self.save()
     
     def save_children_order(self, children):
