@@ -209,11 +209,16 @@ class GitlabEsStorage(Storage):
             s = s.query("match", desc=q)
         if tag_name:
             s = s.query("match", tags=tag_name)    
-        # if all:
-        #     r = s.scan()
-        s = s[page_size*(page_no-1):page_size*page_no]        
-        r = s.execute()        
-        return self._es_response_to_dict(r, insertId=True)
+        if not all:             
+            s = s[page_size*(page_no-1):page_size*page_no]        
+            r = s.execute()        
+            return self._es_response_to_dict(r, insertId=True)
+        else:
+            log.debug('Requesting all snippets...')
+            r = s.scan()
+            #TODO:
+            return [self._update(hit._d_, hit.meta.id) for hit in r]
+
 
     def _es_response_to_dict(self, response, insertId=False):
         if insertId:
@@ -225,15 +230,24 @@ class GitlabEsStorage(Storage):
         return [hit['_id'] for hit in r.hits.hits]                  
 
         
-    def get_frames(self, q='', tag_name=None, cache_id=None, order_by="init_date"):
-        search = Search(index=self.get_es_index_name())
-        search = search.filter("exists", field="children")
+    def get_frames(self, q='', tag_name=None, cache_id=None, order_by="init_date", page_size=50, page_no=1, all=None):
+        s = Search(index=self.get_es_index_name())
+        s = s.filter("exists", field="children")
         if q:
-            search = search.query("match", desc=q)
+            s = s.query("match", desc=q)
         if tag_name:
-            search = search.query("match", tags=tag_name)    
-        r = search.execute()
-        return self._es_response_to_dict(r, insertId=True)
+            s = s.query("match", tags=tag_name)    
+        if not all:
+            s = s[page_size*(page_no-1):page_size*page_no]        
+            r = s.execute()
+            return self._es_response_to_dict(r, insertId=True)
+        else:
+            log.debug('Requesting all frames...')
+            r = s.scan()
+            #TODO:
+            return [self._update(hit._d_, hit.meta.id) for hit in r]
+
+                
     
     
     #TODO:search of tags
@@ -438,7 +452,7 @@ class GitlabEsStorage(Storage):
         s = Search(index='ke', doc_type='user_data_loc')
         s = s.query("match", proj_id=str(proj_id))
         r = s.execute()        
-        return r.hists.hits[0]['_id']
+        return r.hits.hits[0]['_id']
 
         
     def gitlab_hook(self, push_event):

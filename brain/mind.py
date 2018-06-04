@@ -88,8 +88,8 @@ class Mind:
         return snippets    
         # return SnippetList(snippets)
   
-    def get_frames(self,  q='', tag_name=None, cache_id=None, order_by="init_date"):
-        frs = self.storage.get_frames(q=q, tag_name=tag_name, cache_id=cache_id, order_by=order_by)   
+    def get_frames(self,  q='', tag_name=None, cache_id=None, order_by="init_date", page_size=50, page_no=1, all=None):
+        frs = self.storage.get_frames(q=q, tag_name=tag_name, cache_id=cache_id, order_by=order_by, page_size=50, page_no=1, all=None)   
         log.debug('Frames found:%s', frs)                         
         frames = [Frame(self.username, **fr) for fr in frs]
         return frames
@@ -161,10 +161,10 @@ class Mind:
         if new_tag_name in oldnames:
             oldnames.remove(new_tag_name)
             oldname = oldnames[0]
-            self.update_tag_name(old_name, new_name)
+            self.update_tag_name(oldname, new_tag_name)
         else:
-            self.update_tag_name(tag_name1, new_name)
-            self.update_tag_name(tag_name2, new_name)
+            self.update_tag_name(tag_name1, new_tag_name)
+            self.update_tag_name(tag_name2, new_tag_name)
                 
 
 

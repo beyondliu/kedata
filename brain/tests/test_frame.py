@@ -32,6 +32,12 @@ class TestFrame(unittest.TestCase):
         self.assertListEqual(fr.children, [self.sid])
 
 
+    def test_get_frames(self):        
+        frs = self.mind.get_frames(all="y")
+        frids = [fr.id for fr in frs]
+        self.assertIn(str(self.fid), frids)
+        self.assertIn(str(self.pfid), frids)
+
     def test_update_frame(self):
         fr = self.mind.get_frame(self.fid)
         fr.title = 'testing updating the frame'
