@@ -38,7 +38,7 @@ class Snippet:
         This constructor is used to convert a dict to a Snippet instance
         """        
         self.username = username
-        self.id = id        
+        self._id = id        
         if not desc:
             raise Exception('desc is required!')
         self.desc = desc
@@ -57,7 +57,16 @@ class Snippet:
         #self.annots = sn_dict.get('annot'
         #TODO: id might be put inside   
 
-    
+    @property
+    def id(self):
+        return self._id 
+   
+    @id.setter
+    def id(self, id):
+        if hasattr(self, '_id'):
+            raise AttributeError("Can't set the id!")
+        self._id = id    
+
     def get_storage(self):
         if not hasattr(self, 'storage'):
             self.storage = eval(DEFAULT_STORAGE_CLASS)(self.username)

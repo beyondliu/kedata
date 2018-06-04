@@ -23,10 +23,10 @@ class TestFrame(unittest.TestCase):
     
     def test_get_frame(self):        
         fr = self.mind.get_frame(self.fid)
-        # self.assertEqual(fr.vote, 2)
+        self.assertEqual(fr.vote, 2)
         self.assertEqual(fr.desc, 'a frame')
         self.assertFalse(fr.private)
-        # self.assertListEqual(fr.tags, ['language'])
+         # self.assertListEqual(fr.tags, ['language'])
         self.assertEqual(fr.title, 'a testing frame')
         self.assertIsNone(fr.attachment)
         self.assertListEqual(fr.children, [self.sid])
@@ -48,7 +48,7 @@ class TestFrame(unittest.TestCase):
         fr.save()
         time.sleep(6)
         updated_fr = self.mind.get_frame(self.fid)
-        # self.assertEqual(fr.vote, 2)
+        self.assertEqual(fr.vote, 2)
         self.assertEqual(fr.desc, 'testing updating the frame')
         self.assertTrue(fr.private)
         # self.assertListEqual(fr.tags, ['language'])

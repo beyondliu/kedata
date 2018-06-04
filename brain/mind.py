@@ -48,13 +48,14 @@ class Mind:
         # just construct a Snippet to return to user to use, instead of letting user to call get_snippet
         #immediately and get an Snippet.DoesNotExist error
         s = Snippet(self.username, id, **kwargs)        
-        # s.storage = self.storage
+        s.storage = self.storage
         return s
 
     def create_frame(self, **kwargs):        
         #TODO:check other fields
         s = self.create_snippet(**Frame.clean_fields(kwargs))
         f = Frame(self.username, s.id, **Frame.clean_fields(s.__dict__.copy()))
+        f.storage = self.storage
         return f    
     
     def get_snippet(self, id): 
