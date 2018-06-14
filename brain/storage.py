@@ -52,12 +52,12 @@ class Storage:
         pass
 
 
-#TODO:
+# TODO:
 class DjangoOrmStorage(Storage):
     pass
 
 
-#TODO:method to just modify es objects only without affecting gitlab files
+# TODO:method to just modify es objects only without affecting gitlab files
 class GitlabEsStorage(Storage):
 
     es = Elasticsearch(ES_LOC)
@@ -101,7 +101,7 @@ class GitlabEsStorage(Storage):
             log.error('No gitlab project for user %s is found!', self.username)
 
 
-    #TODO: support different gitlab urls
+    # TODO: support different gitlab urls
     def set_gitlab_proj_id(self, proj_id):        
         GitlabEsStorage.es.index(index='ke', doc_type='user_data_loc', id=self.username, body={'proj_id':str(proj_id)})
         log.info('Succesfully added user gitlab mapping!')
@@ -109,7 +109,7 @@ class GitlabEsStorage(Storage):
 
     def _get_gitlab_proj(self):
         if not hasattr(self, '_proj'):
-            gl = gitlab.Gitlab(REPO_LOC, private_token=GITLAB_TOKEN)
+            gl = gitlab.Gitlab(REPO_LOC, ssl_verify=True, private_token=GITLAB_TOKEN)
             proj_id = self.get_gitlab_proj_id()
             try:
                 self._proj = gl.projects.get(proj_id)                   
@@ -145,22 +145,23 @@ class GitlabEsStorage(Storage):
                       'commit_message': 'Created a snippet'})
         log.info('Succesfully created the snippet!')        
         # self._f_dict[snippet_id] =  f
-        #get_id() return path like snippets/18/id
-        #we want snippet id to be integers #TODO:change other places
+        # get_id() return path like snippets/18/id
+        # we want snippet id to be integers #TODO:change other places
         created_snippet_id = int(f.get_id().split('/')[-1])
         log.info('The snippet %s is successfully created!', created_snippet_id)
         return created_snippet_id
 
 
-    def create_tag(self, **kwargs):        
+    def create_tag(self, **kwargs):   
+        assert 'name' in kwargs, 'You must provide name of the tag you want to create!'     
         name = kwargs.get('name')  
-        #check if the tag is already existing     
+        # check if the tag is already existing     
         try:
             self.get_tag(name)
         except Storage.NotFoundError:    
             pass
         else:    
-            #TODO: a new type of Exception
+            # TODO: a new type of Exception
             raise Exception('This tag already exist!')        
         tags_f = self._get_gitlab_proj().files.get(file_path='tags', ref='master')        
         content = tags_f.decode().decode("utf-8")        
@@ -216,7 +217,7 @@ class GitlabEsStorage(Storage):
         else:
             log.debug('Requesting all snippets...')
             r = s.scan()
-            #TODO:
+            # TODO:
             return [self._update(hit._d_, hit.meta.id) for hit in r]
 
 
@@ -244,20 +245,20 @@ class GitlabEsStorage(Storage):
         else:
             log.debug('Requesting all frames...')
             r = s.scan()
-            #TODO:
+            # TODO:
             return [self._update(hit._d_, hit.meta.id) for hit in r]
 
                 
     
     
-    #TODO:search of tags
+    # TODO:search of tags
     def get_tags(self):
         s = Search(index=self.get_es_index_name(), doc_type='tag')
         r = s.execute()        
         return self._es_response_to_dict(r)
         
     def delete_snippet(self, id):  
-        #TODO:removing caching of f
+        # TODO:removing caching of f
         self._get_f(id).delete(branch='master', commit_message='Delete the snippet')
         log.info('Snippet %s  succesfully deleted!', id)
 
@@ -265,7 +266,7 @@ class GitlabEsStorage(Storage):
         self.get_tag(name)        
         tags_f = self._get_tags_f()
         content = tags_f.decode().decode("utf-8")
-        #TODO: yaml multi documents format
+        # TODO: yaml multi documents format
         items = content.split('\n\n')        
         items = filter(('\n').__ne__, 
                 filter(('').__ne__, items))
@@ -280,7 +281,7 @@ class GitlabEsStorage(Storage):
         #     tags_txt_list.append(yaml.dump(tag, default_flow_style=False, Dumper=Dumper))            
         # tags_txt = '\n\n'.join(tags_txt_list)        
         tags_txt = '\n\n'.join(list(map(lambda tag:yaml.dump(tag, default_flow_style=False, Dumper=Dumper), tags)))
-        #put update of the tag itself into this commit so it is wrapped up like a transaction. 
+        # put update of the tag itself into this commit so it is wrapped up like a transaction. 
         actions = [{"action": "update",
                     "file_path": 'tags',
                     "content": tags_txt}
@@ -315,12 +316,12 @@ class GitlabEsStorage(Storage):
         f.save(branch='master', commit_message='Update the snippet')  
 
 
-    #TODO:whether to always sort the tag by alphabetic order before writing it back? If so, line number cannot be used to tell which tag has changed. 
-    #Currently tags are stored in the order that they are initially written in. 
+    # TODO:whether to always sort the tag by alphabetic order before writing it back? If so, line number cannot be used to tell which tag has changed. 
+    # Currently tags are stored in the order that they are initially written in. 
     def update_tag(self, name, **kwargs):
         log.info('Updating the tag %s with %s', name, kwargs)
-        #logic below should be in mind? TODO:        
-        #check if there is such a tag
+        # logic below should be in mind? TODO:        
+        # check if there is such a tag
         self.get_tag(name)
         tags_f = self._get_tags_f()        
         content = tags_f.decode().decode("utf-8")        
@@ -337,7 +338,7 @@ class GitlabEsStorage(Storage):
                     "file_path": 'tags',
                     "content": tags_txt}
                   ]
-        #TODO:remove below          
+        # TODO:remove below          
         new_name = kwargs.get('name')
         if new_name and new_name != name:          
             #remove this tag from all snippets that have it            
@@ -361,7 +362,7 @@ class GitlabEsStorage(Storage):
                    "actions": actions}  
         self._get_gitlab_proj().commits.create(data)  
         log.info('Tag %s  succesfully updated!', name)  
-        #TODO: parse name from gitlab api return
+        # TODO: parse name from gitlab api return
         return name 
 
 
@@ -371,12 +372,12 @@ class GitlabEsStorage(Storage):
         """
         tags_f = self._get_tags_f()
         content = tags_f.decode().decode("utf-8")
-        #TODO: do purely file processing?
+        # TODO: do purely file processing?
         items = content.split('\n\n')        
         log.debug('parsed items: %s', items)    
         items = filter(('\n').__ne__, 
                 filter(('').__ne__, items))
-        #or more readable:
+        # or more readable:
         # items = filter(('').__ne__, items)
         # items = filter(('\n').__ne__, items)
         tags = []
@@ -402,7 +403,7 @@ class GitlabEsStorage(Storage):
                     "content": tags_txt}
                   ]        
     
-        #update this tag from all snippets that have it
+        # update this tag from all snippets that have it
         query= {
                  "query": {
                      "match" : {
@@ -412,7 +413,7 @@ class GitlabEsStorage(Storage):
                } 
         res_dict = GitlabEsStorage.es.search(index=self.get_es_index_name(), doc_type=GitlabEsStorage.es_doc_type, body=query) 
         if res_dict['hits']['total'] == 0:      
-            #no snippets have this tag, so just do nothing                                     
+            # no snippets have this tag, so just do nothing                                     
             pass
         else:
             hits = res_dict['hits']['hits']
@@ -435,7 +436,7 @@ class GitlabEsStorage(Storage):
                    "actions": actions}  
         self._get_gitlab_proj().commits.create(data)  
         log.info('Tag name %s succesfully updated to %s!', name, new_name)   
-        #TODO: parse new name from gitlab api return 
+        # TODO: parse new name from gitlab api return 
         return new_name
 
     
@@ -486,19 +487,19 @@ class GitlabEsStorage(Storage):
                         res_dict = GitlabEsStorage.es.index(index=self.get_es_index_name(), doc_type=GitlabEsStorage.es_doc_type, id=str(id), body=yaml.load(content))
                         log.debug('hook for modifying snippet result: %s', res_dict)
                     if path == 'tags':
-                        #TODO: get the change of tags file in this commit     
+                        # TODO: get the change of tags file in this commit     
                         actual_commit = self._get_gitlab_proj().commits.get(commit['id'])
                         # Get the diff for a commit
                         diff = actual_commit.diff()                                           
                         log.debug('Commit diff: %s', diff)
-                        #the actual_commit might have items related to those updated snippets as well since it ask for the commit directly. So we need to get the tags change out
+                        # the actual_commit might have items related to those updated snippets as well since it ask for the commit directly. So we need to get the tags change out
                         # and ignore snippets change from this actual_commit since the info is already in the push event
                         tags_diff = [d for d in diff if d['old_path'] == 'tags'][0]
                         # patch = PatchSet(diff[0]['diff'])
                         patch = PatchSet(tags_diff['diff'])
-                        #there shall be only one changed file, which is "tags" file
+                        # there shall be only one changed file, which is "tags" file
                         modified_file = patch.modified_files[0]
-                        #there shall be only one place of change
+                        # there shall be only one place of change
                         hunk = modified_file.pop() 
                         added_lines = [line for line in hunk.target_lines() if line.is_added]
                         removed_lines = [line for line in hunk.source_lines() if line.is_removed]
@@ -514,7 +515,7 @@ class GitlabEsStorage(Storage):
                             log.info('A new tag %s is successfully indexed into ES!', tag_name)
                         if added_lines and removed_lines:                            
                             log.info('Tag updated!')
-                            #Below's way of trying to re-construct the tag from the diff is really erro prone. For example, some line of 
+                            # Below's way of trying to re-construct the tag from the diff is really erro prone. For example, some line of 
                             # the previous tag might appear in the context while some line of this tag doesn't appear in the context. Then
                             # the field might get a value of the previous tag. TODO: might change to store each tag a file, which is also easy
                             # for human eyes. Or write a plain text helper utility to get the lines of tag from a line number of change (PatchSet  
@@ -522,9 +523,9 @@ class GitlabEsStorage(Storage):
                             # just always do operation of tag on the object level instead of file level, and only write the whole tags object into
                             # the file. TODO: 
                             target_context_lines = [line for line in hunk.target_lines() if line.is_context]
-                            #TODO:test different cases
+                            # TODO:test different cases
                             context_dict = yaml.load('\n'.join([line.value for line in target_context_lines]))
-                            #TODO: if tag name gets updated as well
+                            # TODO: if tag name gets updated as well
                             tag_name = context_dict.get('name')
                             added_lines_yaml_txt = '\n'.join([line.value for line in added_lines])                        
                             log.debug('Content change of tags file: %s', added_lines_yaml_txt)

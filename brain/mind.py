@@ -18,12 +18,15 @@ class Mind:
     or local plain text files managed, with git with searching provided with sqlite, and etc.   
     """
 
-    def __init__(self, username):    
-        if not username:
-            raise Exception('No username given!')    
+    def __init__(self, username, storage=None):    
+        assert username, 'No username given!'
         self.username = username
-              
-        self.storage = GitlabEsStorage(username) 
+        if storage:      
+            self.storage = storage
+        else:    
+            self.storage = eval(DEFAULT_STORAGE_CLASS)(self.username) 
+        
+            
 
     # def get_note_cls(self, bookname='snippet'):   
     #     try:     
@@ -34,8 +37,7 @@ class Mind:
     
     def create_snippet(self, **kwargs):        
         desc = kwargs.get('desc')
-        if not desc:
-            raise Exception('desc is required!')                 
+        assert desc, 'desc is required!'
         now = timezone(TIME_ZONE).localize(datetime.now()).replace(microsecond=0).isoformat()            
         #TODO: consider case of bulk importing, which probably already have init_time and update_time
         kwargs = Snippet.clean_fields(kwargs)
@@ -44,18 +46,16 @@ class Mind:
         # if not kwargs.get('update_time'):
         kwargs['update_time'] = now   
         id = self.storage.create_snippet(**kwargs)      
-        #Since there will be a delay for es to create this snippet after its creation in gitlab, here we
+        # Since there will be a delay for es to create this snippet after its creation in gitlab, here we
         # just construct a Snippet to return to user to use, instead of letting user to call get_snippet
-        #immediately and get an Snippet.DoesNotExist error
-        s = Snippet(self.username, id, **kwargs)        
-        s.storage = self.storage
+        # immediately and get an Snippet.DoesNotExist error
+        s = Snippet(self.username, id, storage=self.storage, **kwargs)                
         return s
 
     def create_frame(self, **kwargs):        
         #TODO:check other fields
         s = self.create_snippet(**Frame.clean_fields(kwargs))
-        f = Frame(self.username, s.id, **Frame.clean_fields(s.__dict__.copy()))
-        f.storage = self.storage
+        f = Frame(self.username, s.id, storage=self.storage, **Frame.clean_fields(s.__dict__.copy()))        
         return f    
     
     def get_snippet(self, id): 
@@ -69,8 +69,7 @@ class Mind:
             kwargs = self.storage.get_snippet(id)        
         except Storage.NotFoundError:
             raise Snippet.DoesNotExist  
-        s = Snippet(self.username, id, **kwargs)        
-        s.storage = self.storage
+        s = Snippet(self.username, id, storage=self.storage, **kwargs)                
         return s
     
     #TODO:remove?
@@ -103,11 +102,10 @@ class Mind:
 
     def create_tag(self, **kwargs):
         name = kwargs.get('name')
-        #should the logic below goes to Tag? TODO:
-        if not name:
-            raise Exception('name is required!')                 
+        # should the logic below goes to Tag? TODO:
+        assert name, 'name is required!'                  
         now = timezone(TIME_ZONE).localize(datetime.now()).replace(microsecond=0).isoformat()            
-        #TODO: consider case of bulk importing, which probably already have init_time and update_time
+        # TODO: consider case of bulk importing, which probably already have init_time and update_time
         kwargs = Tag.clean_fields(kwargs)
         # if not kwargs.get('init_time'):    
         kwargs['init_time'] = now
@@ -147,8 +145,8 @@ class Mind:
         else:
             raise Tag.DoesNotExist               
     
-    #TODO:move this into Snippet?
-    #TODO: optimize with searching in es directly
+    # TODO:move this into Snippet?
+    # TODO: optimize with searching in es directly
     def get_related_frames(self, id):
         fr = self.get_snippet(id)              
         l = list(set(itertools.chain.from_iterable([self.get_snippet(child_id).in_frames for child_id in fr.children])))
@@ -202,7 +200,7 @@ if __name__ == '__main__':
         print('s1:', s1)               
         s1.desc = 'Programming language is similar to spoken language!'
         s1.save()  
-        #wait for es to be updated
+        # wait for es to be updated
         import time
         time.sleep(6)
         s2 = mind.get_snippet(s.id)

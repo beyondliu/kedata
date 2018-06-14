@@ -58,6 +58,7 @@ class TestSnippet(unittest.TestCase):
 
     def test_get_snippets(self):        
         sns = self.mind.get_snippets(all="y")
+        print('all snippets:', sns)
         sids = [s.id for s in sns]
         self.assertIn(str(self.sid), sids)
 

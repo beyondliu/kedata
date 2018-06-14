@@ -14,8 +14,7 @@ class Tag(object):
     fields = ('name', 'desc', 'private','init_time', 'update_time')
 
     def __init__(self, username, name, desc='', private=False, init_time=None, update_time=None):    
-        if not username:
-            raise Exception('No username given!')    
+        assert username, 'No username given!'
         self.username = username
         self.name = name
         self.desc = desc

@@ -83,11 +83,11 @@ class TagSerializer(serializers.Serializer):
             log.info('Updating the tag name...')
             username = self.context.get('username')
             mind = Mind(username) 
-            #TODO:support updating name together with other fields at the same time
+            # TODO:support updating name together with other fields at the same time
             mind.update_tag_name(instance.name, validated_data.get('name'))
         else:
             log.info('Updating the tag...')
-            #name is not in the post data. 
+            # name is not in the post data. 
             instance.save()    
         return instance
 

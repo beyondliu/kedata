@@ -8,7 +8,7 @@ For more detail, see  http://.../knowledge_engine/basic_concepts
 """
 
 
-# from brain.base import *
+from brain.base import PrimaryKey
 from brain.config import *
 from brain.storage import *
 
@@ -26,21 +26,21 @@ class Snippet:
     Snippet is the most basic data. Based on what fields it has, it can be bookmark/scrap/frame. Based on tags, it can be domain specific data in various apps
     """
 
-    #update_time should always be the currrent time
-    #some fields should in get but not in put and post
-    primary_key = 'id'
+    # update_time should always be the currrent time
+    # some fields should in get but not in put and post
+    id =  PrimaryKey()
     fields = ('desc', 'vote', 'private', 'title', 'url', 'tags', 'context', 'attachment', 'children', 'init_time', 'update_time')
     
-    #TODO:move children into frame?
-    def __init__(self, username, id, desc, vote=0, tags=None, private=False, title="", attachment=None, url=None, children=None, context=None, init_time=None, update_time=None):         
+    # TODO:move children into frame?
+    def __init__(self, username, id, desc, vote=0, tags=None, private=False, title="", attachment=None, url=None, children=None, context=None, init_time=None, update_time=None, storage=None):         
         """ 
         You are supposed to create and get a snippet only from Mind class instead of instantiate a Snippet instance directly.
         This constructor is used to convert a dict to a Snippet instance
         """        
         self.username = username
-        self._id = id        
-        if not desc:
-            raise Exception('desc is required!')
+        # self._id = id        
+        Snippet.id = id
+        assert desc, 'desc is required!'
         self.desc = desc
         self.vote = vote
         self.private = private
@@ -53,19 +53,23 @@ class Snippet:
         self.update_time = update_time
         self.children = children
         self.in_frames = self.get_in_frames()  
-        #search and get annots from es TODO:
-        #self.annots = sn_dict.get('annot'
-        #TODO: id might be put inside   
+        # search and get annots from es TODO:
+        # self.annots = sn_dict.get('annot'
+        # TODO: id might be put inside   
+        if storage:      
+            self.storage = storage
+        else:    
+            self.storage = eval(DEFAULT_STORAGE_CLASS)(self.username) 
 
-    @property
-    def id(self):
-        return self._id 
+    # @property
+    # def id(self):
+    #     return self._id 
    
-    @id.setter
-    def id(self, id):
-        if hasattr(self, '_id'):
-            raise AttributeError("Can't set the id!")
-        self._id = id    
+    # @id.setter
+    # def id(self, id):
+    #     if hasattr(self, '_id'):
+    #         raise AttributeError("Can't set the id!")
+    #     self._id = id    
 
     def get_storage(self):
         if not hasattr(self, 'storage'):
